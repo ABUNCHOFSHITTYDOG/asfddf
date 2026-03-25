@@ -1,0 +1,29 @@
+name: Arras Multi-IP Swarm
+on: workflow_dispatch # Gives you a manual 'Start' button
+
+jobs:
+  spawn-swarm:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # If one worker is banned, the others keep running
+      matrix:
+        # This creates 20 unique Cloud PCs instantly
+        worker_id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Dependencies
+        run: npm install ws
+
+      - name: Launch 50 Bots
+        # Each worker runs this command on its own private IP
+        run: node a.js
+        env:
+          WORKER_ID: ${{ matrix.worker_id }}
