@@ -1,39 +1,44 @@
-const WebSocket = require('ws');
 const fs = require('fs');
+const WebSocket = require('ws');
+const { SocksProxyAgent } = require('socks-proxy-agent');
 
-const wasmBuffer = fs.readFileSync("./app.wasm");
-const SERVER = "wss://kvn3s3cpcdk4fl6j-c.uvwx.xyz:8443/5103/";
-const workerId = process.env.WORKER_ID || 0;
+const SERVER = "wss://ak7oqfc2u4qqcu6i-c.uvwx.xyz:8443/5003/";
+const proxyList = fs.readFileSync('proxies.txt', 'utf8').split('\n').filter(p => p.trim());
 
-async function spawnBot(botNum) {
+function spawnBot(index) {
+    const proxy = proxyList[Math.floor(Math.random() * proxyList.length)];
+    const agent = new SocksProxyAgent(`socks5://${proxy}`);
+
     const ws = new WebSocket(SERVER, {
-        headers: { 
-    'Origin': 'https://arras.io',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-}
+        agent: agent,
+        headers: { 'Origin': 'https://arras.io' }
     });
 
     ws.on('open', () => {
-        // Step 1: Handshake (You must use your WASM logic here)
-        console.log(`[Worker ${workerId}] Bot ${botNum} Connected.`);
-        
-        // Step 2: Spawn after a small delay
-        setTimeout(() => {
-            const name = `Bot_${workerId}_${botNum}`;
-            ws.send(new Uint8Array([0x00, ...new TextEncoder().encode(name)]));
-        }, 2000);
+        console.log(`[Bot ${index}] Joined via ${proxy}`);
+
+        // THE "ENTER KEY" ACTION:
+        // Sending 0x00 tells the server "Spawn me now"
+        ws.send(Buffer.from([0x00]));
+
+        // WAIT 2 SECONDS, THEN SPAWN THE NEXT ONE
+        // This keeps the previous bot alive while starting a new one
+        setTimeout(() => spawnBot(index + 1), 2000);
     });
 
-    ws.on('close', () => {
-        // Auto-reconnect after 30 seconds if kicked
-        setTimeout(() => spawnBot(botNum), 30000);
+    ws.on('error', () => {
+        // If proxy is dead, just skip and try the next one
+        spawnBot(index);
+    });
+
+    // CRITICAL: Handle 'Ping' from server so bots don't time out
+    ws.on('message', (data) => {
+        const msg = new Uint8Array(data);
+        if (msg[0] === 0x05) { // 0x05 is usually a Ping in Arras protocols
+            ws.send(new Uint8Array([0x05])); // Send Pong back
+        }
     });
 }
 
-// Start 50 bots, but wait 3 seconds between each one to avoid IP flags
-(async () => {
-    for (let i = 0; i < 50; i++) {
-        spawnBot(i);
-        await new Promise(r => setTimeout(r, 3000));
-    }
-})();
+// Start the loop
+spawnBot(1);
