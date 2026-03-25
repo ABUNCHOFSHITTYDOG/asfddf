@@ -14,28 +14,37 @@ if (!fs.existsSync('proxies.txt')) {
 const proxyList = fs.readFileSync('proxies.txt', 'utf8').split('\n').filter(p => p.trim());
 
 function spawnBot(index) {
-    if (index > 50) return; // Limit to 50 bots per worker
+    if (index > 50) return;
 
+    // Pick a proxy, but make sure it exists
     const rawProxy = proxyList[Math.floor(Math.random() * proxyList.length)];
-    const agent = new SocksProxyAgent(`socks5://${rawProxy}`);
+    if (!rawProxy) return spawnBot(index);
+
+    const [host, port] = rawProxy.split(':');
+    
+    const agent = new SocksProxyAgent({
+        hostname: host.trim(),
+        port: parseInt(port),
+        protocol: 'socks5:',
+        // This stops the EAI_AGAIN hang
+        timeout: 5000 
+    });
 
     const ws = new WebSocket(SERVER, {
         agent: agent,
-        timeout: 10000,
+        handshakeTimeout: 5000, // Don't wait more than 5s to connect
         headers: { 'Origin': 'https://arras.io' }
     });
 
     ws.on('open', () => {
-        console.log(`[Bot ${index}] Joined! IP: ${rawProxy}`);
-        ws.send(Buffer.from([0x00])); // Press "Enter"
-        
-        // Wait 2 seconds before spawning next bot
-        setTimeout(() => spawnBot(index + 1), 2000);
+        console.log(`[Bot ${index}] Joined! IP: ${host}`);
+        ws.send(Buffer.from([0x00])); 
+        setTimeout(() => spawnBot(index + 1), 1500);
     });
 
     ws.on('error', (err) => {
-        console.log(`[Bot ${index}] Failed: ${err.message}. Retrying...`);
-        spawnBot(index); // Try again with a different proxy
+        // If it's a DNS error or Timeout, just try a new proxy immediately
+        spawnBot(index); 
     });
 }
 
