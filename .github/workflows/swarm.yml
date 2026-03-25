@@ -23,7 +23,7 @@ jobs:
         run: npm install ws socks-proxy-agent@8.0.5
 
       - name: Download Free Proxies
-        run: curl -L "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all" > proxies.txt
+        run: curl -L "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=5000&country=all&ssl=all&anonymity=elite" > proxies.txt
 
       - name: Run Swarm with Proxies
         run: node a.js
