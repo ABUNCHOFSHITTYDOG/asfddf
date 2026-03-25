@@ -11,22 +11,22 @@ if (!fs.existsSync('proxies.txt')) {
     process.exit(1);
 }
 
-const proxyList = fs.readFileSync('proxies.txt', 'utf8').split('\n').filter(p => p.trim());
+const proxyList = fs.readFileSync('proxies.txt', 'utf8')
+    .replace(/\r/g, '') // Remove Windows line endings
+    .split('\n')
+    .filter(p => p.trim() && p.includes(':')); // Only keep lines with IP:PORT
 
 function spawnBot(index) {
-    if (index > 50) return;
-
-    // Safety check: if proxies didn't download, don't loop forever
-    if (proxyList.length === 0) {
-        console.log("❌ No proxies found in proxies.txt!");
+    if (index > 50) {
+        console.log("🏁 All 50 bots have attempted to join for this worker.");
         return;
     }
 
     const rawProxy = proxyList[Math.floor(Math.random() * proxyList.length)];
     const [host, port] = rawProxy.split(':');
     
-    // Safety check for malformed proxy lines
-    if (!host || !port) return setTimeout(() => spawnBot(index), 100);
+    // Log the attempt immediately
+    console.log(`[Bot ${index}] 🛡️ Attempting join via Proxy: ${host}:${port}...`);
 
     const agent = new SocksProxyAgent({
         hostname: host.trim(),
@@ -37,20 +37,23 @@ function spawnBot(index) {
 
     const ws = new WebSocket(SERVER, {
         agent: agent,
-        handshakeTimeout: 5000,
+        handshakeTimeout: 8000, // Give free proxies a bit more time
         headers: { 'Origin': 'https://arras.io' }
     });
 
     ws.on('open', () => {
-        console.log(`[Bot ${index}] Joined! IP: ${host}`);
+        // THIS IS THE BIG ONE - YOU WILL SEE THIS WHEN IT WORKS
+        console.log(`[Bot ${index}] ✅ SUCCESS! Joined the game.`);
         ws.send(Buffer.from([0x00])); 
-        setTimeout(() => spawnBot(index + 1), 2000); // Wait 2s for next bot
+        
+        // Don't stop! Keep spawning the rest.
+        setTimeout(() => spawnBot(index + 1), 1500);
     });
 
     ws.on('error', (err) => {
-        // IMPORTANT: The 500ms delay here prevents the RangeError crash
+        // Log the failure so you know it didn't freeze
+        console.log(`[Bot ${index}] ❌ Proxy Dead (${err.message}). Retrying...`);
         setTimeout(() => spawnBot(index), 500); 
     });
 }
-
 spawnBot(1);
