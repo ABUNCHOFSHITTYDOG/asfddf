@@ -16,35 +16,40 @@ const proxyList = fs.readFileSync('proxies.txt', 'utf8').split('\n').filter(p =>
 function spawnBot(index) {
     if (index > 50) return;
 
-    // Pick a proxy, but make sure it exists
-    const rawProxy = proxyList[Math.floor(Math.random() * proxyList.length)];
-    if (!rawProxy) return spawnBot(index);
+    // Safety check: if proxies didn't download, don't loop forever
+    if (proxyList.length === 0) {
+        console.log("❌ No proxies found in proxies.txt!");
+        return;
+    }
 
+    const rawProxy = proxyList[Math.floor(Math.random() * proxyList.length)];
     const [host, port] = rawProxy.split(':');
     
+    // Safety check for malformed proxy lines
+    if (!host || !port) return setTimeout(() => spawnBot(index), 100);
+
     const agent = new SocksProxyAgent({
         hostname: host.trim(),
         port: parseInt(port),
         protocol: 'socks5:',
-        // This stops the EAI_AGAIN hang
         timeout: 5000 
     });
 
     const ws = new WebSocket(SERVER, {
         agent: agent,
-        handshakeTimeout: 5000, // Don't wait more than 5s to connect
+        handshakeTimeout: 5000,
         headers: { 'Origin': 'https://arras.io' }
     });
 
     ws.on('open', () => {
         console.log(`[Bot ${index}] Joined! IP: ${host}`);
         ws.send(Buffer.from([0x00])); 
-        setTimeout(() => spawnBot(index + 1), 1500);
+        setTimeout(() => spawnBot(index + 1), 2000); // Wait 2s for next bot
     });
 
     ws.on('error', (err) => {
-        // If it's a DNS error or Timeout, just try a new proxy immediately
-        spawnBot(index); 
+        // IMPORTANT: The 500ms delay here prevents the RangeError crash
+        setTimeout(() => spawnBot(index), 500); 
     });
 }
 
