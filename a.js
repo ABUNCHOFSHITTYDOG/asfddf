@@ -1,6 +1,6 @@
 const fs = require('fs');
 const WebSocket = require('ws');
-const { SocksProxyAgent } = require('socks-proxy-agent');
+const SocksProxyAgent = require('socks-proxy-agent').SocksProxyAgent;
 
 const SERVER = "wss://ak7oqfc2u4qqcu6i-c.uvwx.xyz:8443/5003/";
 const proxyList = fs.readFileSync('proxies.txt', 'utf8').split('\n').filter(p => p.trim());
