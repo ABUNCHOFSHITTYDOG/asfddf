@@ -1,6 +1,6 @@
 const fs = require('fs');
 const WebSocket = require('ws');
-const { SocksProxyAgent } = require('socks-proxy-agent/dist/index').SocksProxyAgent;
+const { SocksProxyAgent } = require('socks-proxy-agent');
 
 // Load your personal Asocks list
 const proxyList = fs.readFileSync('asocks_proxies.txt', 'utf8')
