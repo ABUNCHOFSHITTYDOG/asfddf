@@ -7,8 +7,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # 20 Workers x 25 Bots = 500 Bots total
         worker_id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -19,13 +20,14 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
-        # We force version 7.0.2 to avoid the "Export" error
         run: npm install ws socks-proxy-agent@8.0.5
 
       - name: Download Asocks List
         run: |
-          # This downloads your personal rotating list from the URL you provided
+          # Use your URL and save it to the text file
           curl -L "https://asocks-list.org/1mLSlycawmCHxivXNuZu62Z8B6aACKIE.txt?template_id=4" -o asocks_proxies.txt
+          
+          # SAFETY CHECK: Print how many lines we got
           echo "Downloaded $(wc -l < asocks_proxies.txt) rotating endpoints."
 
       - name: Run Swarm with Proxies
