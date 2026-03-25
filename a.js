@@ -4,18 +4,19 @@ let SocksProxyAgent = require('socks-proxy-agent');
 
 if (SocksProxyAgent.SocksProxyAgent) SocksProxyAgent = SocksProxyAgent.SocksProxyAgent;
 
-const SERVER = "wss://ak7oqfc2u4qqcu6i-c.uvwx.xyz:8443/5003/";
+const SERVER = "wss://kvn3s3cpcdk4fl6j-c.uvwx.xyz:8443/5103/";
 
-// These are the exact packets you captured from your console
+// REPLACING with the full sequence logic
 const captureSequence = [
-    [0, 1, 0, 1, 114, 34, 126, 194, 6, 80, 35, 77], // Init
-    [81, 238, 54, 110, 4, 33, 2, 5, 81, 167, 194, 44, 237, 175, 112, 176, 34, 115, 137, 162, 244, 244, 193, 134, 145, 184, 214, 155, 70, 79, 151, 73], // Verification
-    [193, 233, 189, 50, 33, 199, 16, 81, 83, 216, 7, 97, 154, 164, 58, 169, 180, 163, 58, 237, 6, 91, 7, 169, 173, 156, 206, 79, 198, 80, 229, 43, 34, 55, 222, 137, 243, 49, 116, 145, 185, 105, 136, 4], // Protocol Sync
-    [167, 135, 110, 145, 204, 184, 111], // Potential Spawn / Input Start
-    [199, 139, 33, 83, 236, 136, 10]     // Movement/Heartbeat
+    [0, 1, 0, 1, 114, 34, 126, 194, 6, 80, 35, 77], // Packet 1
+    [81, 238, 54, 110, 4, 33, 2, 5, 81, 167, 194, 44, 237, 175, 112, 176, 34, 115, 137, 162, 244, 244, 193, 134, 145, 184, 214, 155, 70, 79, 151, 73], // Packet 2
+    [193, 233, 189, 50, 33, 199, 16, 81, 83, 216, 7, 97, 154, 164, 58, 169, 180, 163, 58, 237, 6, 91, 7, 169, 173, 156, 206, 79, 198, 80, 229, 43, 34, 55, 222, 137, 243, 49, 116, 145, 185, 105, 136, 4] // Packet 3
 ];
 
-// Proxy list loader
+// SPAWN COMMAND: Arras usually uses 0x00 followed by the name length
+// Let's use a clear name so you can see them: "BOT"
+const spawnPacket = new Uint8Array([0x00, 0x03, 0x42, 0x4f, 0x54]); 
+
 const proxyList = fs.readFileSync('asocks_proxies.txt', 'utf8')
     .split('\n')
     .map(line => {
@@ -39,34 +40,33 @@ function spawnBot(index) {
     });
 
     ws.on('open', () => {
-        console.log(`[Bot ${index}] 🔌 Connection open. Replaying packets...`);
+        console.log(`[Bot ${index}] ✅ Open. Running Sync...`);
         
-        let pIndex = 0;
-        const sendNext = () => {
-            if (pIndex < captureSequence.length) {
-                ws.send(new Uint8Array(captureSequence[pIndex]));
-                console.log(`[Bot ${index}] 📤 Sent Packet ${pIndex + 1}`);
-                pIndex++;
-                setTimeout(sendNext, 250); // Small delay between packets
+        // Step 1: Send the Handshake sequence
+        setTimeout(() => ws.send(new Uint8Array(captureSequence[0])), 100);
+        setTimeout(() => ws.send(new Uint8Array(captureSequence[1])), 300);
+        setTimeout(() => ws.send(new Uint8Array(captureSequence[2])), 600);
+        
+        // Step 2: The Spawn Request (Crucial!)
+        setTimeout(() => {
+            console.log(`[Bot ${index}] 🚀 Sending SPAWN...`);
+            ws.send(spawnPacket);
+        }, 1200);
+
+        // Step 3: Keep-Alive
+        const heartbeat = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                // Send a generic input packet to stay on map
+                ws.send(new Uint8Array([0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]));
             } else {
-                console.log(`[Bot ${index}] 🚀 Sequence complete. Tank should be spawned.`);
-                
-                // Keep-alive loop: Replay the last 7-byte packet to stay active
-                setInterval(() => {
-                    if (ws.readyState === WebSocket.OPEN) {
-                        ws.send(new Uint8Array(captureSequence[captureSequence.length - 1]));
-                    }
-                }, 3000);
-
-                // Start next bot
-                setTimeout(() => spawnBot(index + 1), 1000);
+                clearInterval(heartbeat);
             }
-        };
+        }, 2000);
 
-        sendNext();
+        setTimeout(() => spawnBot(index + 1), 1500);
     });
 
-    ws.on('error', () => setTimeout(() => spawnBot(index), 2000));
+    ws.on('error', () => {});
 }
 
 spawnBot(1);
