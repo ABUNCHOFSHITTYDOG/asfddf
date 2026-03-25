@@ -7,7 +7,7 @@ if (SocksProxyAgent.SocksProxyAgent) {
     SocksProxyAgent = SocksProxyAgent.SocksProxyAgent;
 }
 
-const SERVER = "wss://kvn3s3cpcdk4fl6j-c.uvwx.xyz:8443/5103/";
+const SERVER = "wss://ak7oqfc2u4qqcu6i-c.uvwx.xyz:8443/5003/";
 
 // Load the file and clean the brackets [] off the end
 const proxyList = fs.readFileSync('asocks_proxies.txt', 'utf8')
