@@ -6,25 +6,26 @@ if (SocksProxyAgent.SocksProxyAgent) SocksProxyAgent = SocksProxyAgent.SocksProx
 
 const SERVER = "wss://ak7oqfc2u4qqcu6i-c.uvwx.xyz:8443/5003/";
 
-// 1. IMPROVED CLEANING: This handles spaces, brackets, and empty lines much better
+// 1. IMPROVED CLEANING: This extracts the proxy even if it's trapped in a curl command
 const proxyList = fs.readFileSync('asocks_proxies.txt', 'utf8')
     .split('\n')
-    .map(line => line.trim())
-    .filter(line => line.length > 10) // Ignore tiny/empty lines
-    .map(line => line.split('[')[0].trim()); // Strip the refresh link and extra spaces
+    .map(line => {
+        // Regex: Find the pattern user:pass@ip:port
+        const match = line.match(/([a-zA-Z0-9.\-_]+:[a-zA-Z0-9.\-_]+@[0-9.]+:[0-9]+)/);
+        return match ? `socks5://${match[1]}` : null;
+    })
+    .filter(line => line !== null);
 
-console.log(`📡 Swarm Engine Loaded. ${proxyList.length} German Proxies verified.`);
+console.log(`📡 Swarm Engine Loaded. ${proxyList.length} German Proxies cleaned from Curl format.`);
 
 function spawnBot(index) {
     if (index > 25) return; 
 
-    // Pick a random proxy
     const proxyUrl = proxyList[Math.floor(Math.random() * proxyList.length)];
 
-    // DEBUG: If it's still failing, this will tell us exactly why
-    if (!proxyUrl || !proxyUrl.startsWith('socks5://')) {
-        console.log(`⚠️ Skipping invalid line: "${proxyUrl}"`);
-        return spawnBot(index);
+    if (!proxyUrl) {
+        console.log(`⚠️ No valid proxies found in list.`);
+        return;
     }
 
     try {
@@ -41,14 +42,14 @@ function spawnBot(index) {
         ws.on('open', () => {
             console.log(`[Bot ${index}] ✅ CONNECTED. Sending Spawn Packets...`);
             
-            // Handshake
+            // Handshake (arras.io init)
             ws.send(Uint8Array.from([0x00, 0x61, 0x72, 0x72, 0x61, 0x73, 0x2e, 0x69, 0x6f]));
 
             setTimeout(() => {
-                // Spawn
+                // Spawn (Enter key)
                 ws.send(Uint8Array.from([0x00, 0x00]));
                 
-                // Heartbeat
+                // Heartbeat (Keep-alive)
                 const pulse = setInterval(() => {
                     if (ws.readyState === WebSocket.OPEN) {
                         ws.send(Uint8Array.from([0x01, 0x00]));
@@ -67,8 +68,7 @@ function spawnBot(index) {
         });
 
     } catch (e) {
-        console.log(`[Bot ${index}] ❌ CRITICAL PARSE ERROR: ${e.message}`);
-        console.log(`Broken URL was: ${proxyUrl}`);
+        console.log(`[Bot ${index}] ❌ Error: ${e.message}`);
         setTimeout(() => spawnBot(index), 1000);
     }
 }
