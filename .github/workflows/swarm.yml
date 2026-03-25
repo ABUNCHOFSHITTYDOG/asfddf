@@ -7,7 +7,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 20 Workers x 25 Bots = 500 Bots total
+        # Each worker runs a.js. 20 workers x 25 bots = 500 bots.
+        # WARNING: This will use your 3GB trial data very quickly!
         worker_id: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
 
     steps:
@@ -20,17 +21,23 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
+        # Force version 8.0.5 to ensure SocksProxyAgent works with Node 20
         run: npm install ws socks-proxy-agent@8.0.5
 
-      - name: Download Asocks List
+      - name: Download and Clean Asocks List
         run: |
-          # Use your URL and save it to the text file
+          # Use your 'Full socks5' URL here
           curl -L "https://asocks-list.org/1mLSlycawmCHxivXNuZu62Z8B6aACKIE.txt?template_id=4" -o asocks_proxies.txt
           
-          # SAFETY CHECK: Print how many lines we got
-          echo "Downloaded $(wc -l < asocks_proxies.txt) rotating endpoints."
+          # Logic check: Make sure the file isn't empty
+          if [ ! -s asocks_proxies.txt ]; then
+            echo "❌ Error: Downloaded file is empty. Check your Asocks link!"
+            exit 1
+          fi
+          echo "✅ Downloaded $(wc -l < asocks_proxies.txt) German Mobile endpoints."
 
-      - name: Run Swarm with Proxies
+      - name: Run Swarm
         run: node a.js
         env:
+          # Pass the worker ID so you can see which GitHub runner is active
           WORKER_ID: ${{ matrix.worker_id }}
