@@ -19,8 +19,8 @@ jobs:
           node-version: '20'
 
       - name: Install Dependencies
-        # This is CRITICAL or your a.js will crash
-        run: npm install ws socks-proxy-agent
+        # We force version 7.0.2 to avoid the "Export" error
+        run: npm install ws socks-proxy-agent@7.0.2
 
       - name: Download Free Proxies
         run: curl -L "https://api.proxyscrape.com/v2/?request=displayproxies&protocol=socks5&timeout=10000&country=all&ssl=all&anonymity=all" > proxies.txt
